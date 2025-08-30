@@ -91,7 +91,8 @@ class _CustomCircularCheckState extends State<CustomCircularCheck>
     final theme = Theme.of(context);
     final activeColor = widget.activeColor ?? theme.colorScheme.primary;
     final inactiveColor =
-        widget.inactiveColor ?? theme.colorScheme.outline.withOpacity(0.5);
+        widget.inactiveColor ??
+        theme.colorScheme.outline.withValues(alpha: 0.5);
     final checkColor = widget.checkColor ?? theme.colorScheme.onPrimary;
 
     return GestureDetector(
@@ -116,7 +117,7 @@ class _CustomCircularCheckState extends State<CustomCircularCheck>
                 boxShadow: widget.isChecked
                     ? [
                         BoxShadow(
-                          color: activeColor.withOpacity(0.3),
+                          color: activeColor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -212,95 +213,171 @@ class _EditableCheckListItemState extends ConsumerState<EditableCheckListItem> {
     final theme = Theme.of(context);
     final isSelected = widget.check.isSelected;
 
-    return Slidable(
-      key: ValueKey(widget.check.id),
-      endActionPane: ActionPane(
-        motion: const DrawerMotion(),
-        extentRatio: 0.25,
-        children: [
-          SlidableAction(
-            onPressed: (_) => _deleteItem(),
-            backgroundColor: theme.colorScheme.errorContainer,
-            foregroundColor: theme.colorScheme.onErrorContainer,
-            icon: Icons.delete_outline,
-            borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Slidable(
+          key: ValueKey(widget.check.id),
+          endActionPane: ActionPane(
+            motion: const BehindMotion(),
+            extentRatio: 0.25,
+            dragDismissible: false,
+            children: [
+              // Delete Action with Professional Styling
+              Expanded(
+                child: Container(
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        theme.colorScheme.error.withValues(alpha: 0.05),
+                        theme.colorScheme.error.withValues(alpha: 0.1),
+                      ],
+                    ),
+                  ),
+                  child: InkWell(
+                    onTap: _deleteItem,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.error,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.colorScheme.error.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.delete_outline,
+                            color: theme.colorScheme.onError,
+                            size: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start, // Top-aligns the checkbox
-          children: [
-            // Custom Circular Checkbox - Top aligned
-            Padding(
-              padding: const EdgeInsets.only(top: 2.0),
-              child: CustomCircularCheck(
-                isChecked: isSelected,
-                onChanged: (value) {
-                  final updatedCheck = widget.check.copyWith(isSelected: value);
-                  ref.read(expenseRepositoryProvider).updateCheck(updatedCheck);
-                },
-                size: 24.0,
-                strokeWidth: 2.5,
-                activeColor: theme.colorScheme.primary,
-                checkColor: theme.colorScheme.onPrimary,
-                inactiveColor: theme.colorScheme.outline.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Column for Number and Title
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Number TextField (Primary)
-                  TextField(
-                    controller: _numberController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: '0.00',
-                    ),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      decoration: isSelected
-                          ? TextDecoration.lineThrough
-                          : null,
-                      color: isSelected
-                          ? theme.hintColor
-                          : theme.colorScheme.onSurface,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(color: theme.colorScheme.surface),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Custom Circular Checkbox - Top aligned with better spacing
+                Padding(
+                  padding: const EdgeInsets.only(top: 3.0, right: 2.0),
+                  child: CustomCircularCheck(
+                    isChecked: isSelected,
+                    onChanged: (value) {
+                      final updatedCheck = widget.check.copyWith(
+                        isSelected: value,
+                      );
+                      ref
+                          .read(expenseRepositoryProvider)
+                          .updateCheck(updatedCheck);
+                    },
+                    size: 22.0,
+                    strokeWidth: 2.0,
+                    activeColor: theme.colorScheme.primary,
+                    checkColor: theme.colorScheme.onPrimary,
+                    inactiveColor: theme.colorScheme.outline.withValues(
+                      alpha: 0.4,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  // Title TextField (Secondary)
-                  TextField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: 'Item name...',
-                    ),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      decoration: isSelected
-                          ? TextDecoration.lineThrough
-                          : null,
-                      color: isSelected
-                          ? theme.hintColor
-                          : theme.colorScheme.onSurface.withOpacity(0.7),
-                    ),
+                ),
+                const SizedBox(width: 12),
+                // Column for Number and Title with improved layout
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Number TextField (Primary) with better styling
+                      TextField(
+                        controller: _numberController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 2,
+                          ),
+                          hintText: '0.00',
+                          hintStyle: TextStyle(
+                            color: theme.hintColor.withValues(alpha: 0.5),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          decoration: isSelected
+                              ? TextDecoration.lineThrough
+                              : null,
+                          decorationColor: isSelected ? theme.hintColor : null,
+                          decorationThickness: 2.0,
+                          color: isSelected
+                              ? theme.hintColor.withValues(alpha: 0.7)
+                              : theme.colorScheme.onSurface,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Title TextField (Secondary) with improved styling
+                      TextField(
+                        controller: _titleController,
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          hintText: 'Item name...',
+                          hintStyle: TextStyle(
+                            color: theme.hintColor.withValues(alpha: 0.4),
+                            fontSize: 14,
+                          ),
+                        ),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          decoration: isSelected
+                              ? TextDecoration.lineThrough
+                              : null,
+                          decorationColor: isSelected
+                              ? theme.hintColor.withValues(alpha: 0.6)
+                              : null,
+                          decorationThickness: 1.5,
+                          color: isSelected
+                              ? theme.hintColor.withValues(alpha: 0.6)
+                              : theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.8,
+                                ),
+                          fontSize: 14,
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

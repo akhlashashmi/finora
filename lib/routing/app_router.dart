@@ -26,9 +26,8 @@ GoRouter goRouter(Ref ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: CircularProgressIndicator())),
       ),
       GoRoute(
         path: '/intro',
@@ -73,7 +72,8 @@ GoRouter goRouter(Ref ref) {
 
       // If intro IS complete and the user is on the intro/splash screen,
       // redirect them to the home screen.
-      if (isIntroCompleted && (isGoingToIntro || state.matchedLocation == '/splash')) {
+      if (isIntroCompleted &&
+          (isGoingToIntro || state.matchedLocation == '/splash')) {
         return '/';
       }
 

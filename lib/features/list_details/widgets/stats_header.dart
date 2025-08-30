@@ -1,3 +1,5 @@
+import 'dart:ui'; // Added for ImageFilter
+
 import 'package:finora/data/local/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -5,13 +7,11 @@ import 'package:intl/intl.dart';
 class StatsHeader extends StatelessWidget {
   final ListPage listPage;
   final List<Check> checks;
-  final bool isPinned;
 
   const StatsHeader({
     super.key,
     required this.listPage,
     required this.checks,
-    this.isPinned = false,
   });
 
   @override
@@ -21,7 +21,7 @@ class StatsHeader extends StatelessWidget {
     final compactCurrencyFormat =
     NumberFormat.compactCurrency(symbol: '\$', decimalDigits: 2);
 
-    // Calculate statistics
+    // --- CALCULATIONS ---
     final totalItems = checks.length;
     final selectedCount = checks.where((c) => c.isSelected).length;
     final totalAmount = checks.fold<double>(0.0, (sum, c) => sum + c.number);
@@ -30,130 +30,170 @@ class StatsHeader extends StatelessWidget {
         .fold<double>(0.0, (sum, c) => sum + c.number);
 
     final hasBudget = listPage.budget > 0;
-    final remaining = listPage.budget - totalAmount;
+    final remainingForTotal = listPage.budget - totalAmount;
+    final remainingForSelected = listPage.budget - selectedAmount;
+
     final budgetUsedPercentage = hasBudget && listPage.budget > 0
         ? (totalAmount / listPage.budget).clamp(0.0, 1.0)
         : 0.0;
 
-    // Determine if we need to use compact formatting
-    final useCompactFormat = isPinned ||
-        totalAmount > 999999 ||
-        (hasBudget && listPage.budget > 999999);
-    final numberFormat = useCompactFormat ? compactCurrencyFormat : currencyFormat;
+    final useCompactFormat =
+        totalAmount > 999999 || (hasBudget && listPage.budget > 999999);
+    final numberFormat =
+    useCompactFormat ? compactCurrencyFormat : currencyFormat;
 
-    // New stats: average item value
-    final averageAmount = totalItems > 0 ? totalAmount / totalItems : 0;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16), // Vertical margin removed
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+    // The root widget is now a ClipRRect to contain the BackdropFilter
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
+        child: Container(
+          // Margin is removed, padding is used inside to keep content aligned
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceVariant.withOpacity(0.5), // Slightly more opaque for better legibility
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+          ),
+          child: _buildExpandedView(
+            context,
+            theme,
+            numberFormat,
+            selectedAmount,
+            totalAmount,
+            selectedCount,
+            totalItems,
+            hasBudget,
+            remainingForSelected,
+            remainingForTotal,
+            budgetUsedPercentage,
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildExpandedView(
+      BuildContext context,
+      ThemeData theme,
+      NumberFormat numberFormat,
+      double selectedAmount,
+      double totalAmount,
+      int selectedCount,
+      int totalItems,
+      bool hasBudget,
+      double remainingForSelected,
+      double remainingForTotal,
+      double budgetUsedPercentage,
+      ) {
+    return Padding( // Use padding instead of margin
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
-        // === FIX APPLIED HERE ===
-        // mainAxisSize: MainAxisSize.min, // REMOVED this line
-        mainAxisAlignment: MainAxisAlignment.center, // ADDED this line
-        // ========================
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Primary Statistics Row
+          // --- Primary Statistics Row ---
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            // Reduced vertical padding to prevent overflow
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                if (!isPinned) ...[
-                  _StatTile(
+                Expanded(
+                  child: _StatTile(
+                    icon: Icons.shopping_cart_checkout,
+                    label: 'Selected',
+                    value: numberFormat.format(selectedAmount),
+                    theme: theme,
+                    isCurrency: true,
+                    valueColor: theme.colorScheme.secondary,
+                  ),
+                ),
+                _VerticalDivider(theme: theme),
+                Expanded(
+                  child: _StatTile(
+                    icon: Icons.attach_money_outlined,
+                    label: 'Total',
+                    value: numberFormat.format(totalAmount),
+                    theme: theme,
+                    isCurrency: true,
+                    valueColor: theme.colorScheme.primary,
+                  ),
+                ),
+                _VerticalDivider(theme: theme),
+                Expanded(
+                  child: _StatTile(
                     icon: Icons.check_circle_outline,
-                    label: 'Completed',
+                    label: 'Items',
                     value: '$selectedCount/$totalItems',
                     theme: theme,
                     isCurrency: false,
                     progress: totalItems > 0 ? selectedCount / totalItems : 0.0,
                   ),
-                  _VerticalDivider(theme: theme),
-                ],
-                _StatTile(
-                  icon: Icons.attach_money_outlined,
-                  label: 'Total',
-                  value: numberFormat.format(totalAmount),
-                  theme: theme,
-                  isCurrency: true,
-                  valueColor: theme.colorScheme.primary,
                 ),
-                if (!isPinned) ...[
-                  _VerticalDivider(theme: theme),
-                  _StatTile(
-                    icon: Icons.trending_up_outlined,
-                    label: 'Average',
-                    value: numberFormat.format(averageAmount),
-                    theme: theme,
-                    isCurrency: true,
-                    valueColor: theme.colorScheme.tertiary,
-                  ),
-                ],
               ],
             ),
           ),
 
-          // Budget & Selected Amount Row (if budget exists or items are selected)
-          if ((hasBudget || selectedCount > 0) && !isPinned) ...[
+          // --- Budget Row ---
+          if (hasBudget) ...[
             Container(
               height: 1,
               color: theme.colorScheme.outline.withOpacity(0.1),
-              margin: const EdgeInsets.symmetric(horizontal: 20),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              // Reduced vertical padding to prevent overflow
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  if (hasBudget) ...[
-                    Expanded(
-                      child: _StatTile(
-                        icon: Icons.account_balance_wallet_outlined,
-                        label: 'Budget',
-                        value: numberFormat.format(listPage.budget),
-                        theme: theme,
-                        isCurrency: true,
-                        progress: budgetUsedPercentage,
-                        progressColor: budgetUsedPercentage > 1.0
-                            ? theme.colorScheme.error
-                            : budgetUsedPercentage > 0.8
-                            ? Colors.orange
-                            : theme.colorScheme.primary,
-                      ),
+                  Expanded(
+                    child: _StatTile(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Budget',
+                      value: numberFormat.format(listPage.budget),
+                      theme: theme,
+                      isCurrency: true,
+                      progress: budgetUsedPercentage,
+                      progressColor: budgetUsedPercentage > 1.0
+                          ? theme.colorScheme.error
+                          : budgetUsedPercentage > 0.8
+                          ? Colors.orange
+                          : theme.colorScheme.primary,
                     ),
-                    _VerticalDivider(theme: theme),
-                    Expanded(
-                      child: _StatTile(
-                        icon: remaining < 0
-                            ? Icons.warning_outlined
-                            : Icons.savings_outlined,
-                        label: remaining < 0 ? 'Over Budget' : 'Remaining',
-                        value: numberFormat.format(remaining.abs()),
-                        theme: theme,
-                        isCurrency: true,
-                        valueColor: remaining < 0
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.primary,
-                      ),
+                  ),
+                  _VerticalDivider(theme: theme),
+                  Expanded(
+                    child: _StatTile(
+                      icon: remainingForSelected < 0
+                          ? Icons.warning_amber_rounded
+                          : Icons.price_check_rounded,
+                      label: remainingForSelected < 0
+                          ? 'Over (Selected)'
+                          : 'Left (Selected)',
+                      value: numberFormat.format(remainingForSelected.abs()),
+                      theme: theme,
+                      isCurrency: true,
+                      valueColor: remainingForSelected < 0
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.secondary,
                     ),
-                  ],
-                  if (selectedCount > 0) ...[
-                    if (hasBudget) _VerticalDivider(theme: theme),
-                    Expanded(
-                      child: _StatTile(
-                        icon: Icons.shopping_cart_outlined,
-                        label: 'Selected',
-                        value: numberFormat.format(selectedAmount),
-                        theme: theme,
-                        isCurrency: true,
-                        valueColor: theme.colorScheme.secondary,
-                      ),
+                  ),
+                  _VerticalDivider(theme: theme),
+                  Expanded(
+                    child: _StatTile(
+                      icon: remainingForTotal < 0
+                          ? Icons.warning_amber_rounded
+                          : Icons.savings_outlined,
+                      label:
+                      remainingForTotal < 0 ? 'Over (Total)' : 'Left (Total)',
+                      value: numberFormat.format(remainingForTotal.abs()),
+                      theme: theme,
+                      isCurrency: true,
+                      valueColor: remainingForTotal < 0
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -173,7 +213,7 @@ class _VerticalDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 1,
-      height: 40,
+      height: 40, // Kept height the same as it's a fixed divider
       color: theme.colorScheme.outline.withOpacity(0.2),
     );
   }
@@ -210,7 +250,8 @@ class _StatTile extends StatelessWidget {
           size: 20,
           color: valueColor ?? theme.colorScheme.onSurface.withOpacity(0.7),
         ),
-        const SizedBox(height: 4),
+        // Reduced vertical spacing
+        const SizedBox(height: 2),
         if (progress != null) ...[
           Container(
             height: 3,
@@ -230,7 +271,8 @@ class _StatTile extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          // Reduced vertical spacing
+          const SizedBox(height: 4),
         ],
         Text(
           value,

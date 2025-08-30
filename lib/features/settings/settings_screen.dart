@@ -5,8 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -16,9 +14,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _isLocalBackupExpanded = false;
-  bool _isCloudBackupExpanded = false;
-
   @override
   Widget build(BuildContext context) {
     final backupService = ref.watch(backupServiceProvider);
@@ -26,138 +21,182 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings & Backup')),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-        children: [
-          // Local Backup Expansion Tile
-          _StyledExpansionTile(
-            title: 'Local Backup & Restore',
-            subtitle: 'Export or import data from a file',
-            icon: Icons.storage_rounded,
-            isExpanded: _isLocalBackupExpanded,
-            onExpansionChanged: (isExpanded) {
-              setState(() => _isLocalBackupExpanded = isExpanded);
-            },
-            children: [
-              ListTile(
-                leading: const Icon(Icons.download_for_offline_outlined),
-                title: const Text('Export to File'),
-                subtitle: const Text('Save a JSON backup to your device'),
-                onTap: () async {
-                  try {
-                    final backup = await backupService.createBackupModel();
-                    final jsonString = const JsonEncoder.withIndent(
-                      '  ',
-                    ).convert(backup.toJson());
-                    final tempDir = await getTemporaryDirectory();
-                    final fileName =
-                        'expenses_backup_${DateFormat('yyyy-MM-dd_HH-mm').format(DateTime.now())}.json';
-                    final file = File('${tempDir.path}/$fileName');
-                    await file.writeAsString(jsonString);
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // Local Backup Section
+                _SectionCard(
+                  title: 'Local Backup',
+                  description: 'Export or import data from local files',
+                  icon: Icons.storage_rounded,
+                  color: theme.colorScheme.primary,
+                  children: [
+                    _ActionTile(
+                      icon: Icons.download_for_offline_outlined,
+                      title: 'Export to File',
+                      subtitle: 'Save a JSON backup',
+                      onTap: () async {
+                        try {
+                          final backup = await backupService.createBackupModel();
+                          final jsonString = const JsonEncoder.withIndent('  ')
+                              .convert(backup.toJson());
 
-                    await Share.shareXFiles([
-                      XFile(file.path),
-                    ], text: 'Here is my expense backup.');
-                  } catch (e) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Export failed: $e')),
-                    );
-                  }
-                },
-              ),
-              // CustomDivider(),
-              ListTile(
-                leading: const Icon(Icons.upload_file_outlined),
-                title: const Text('Import from File'),
-                subtitle: const Text('Restore data from a local JSON file'),
-                onTap: () async {
-                  FilePickerResult? result = await FilePicker.platform
-                      .pickFiles();
-                  if (result != null) {
-                    File file = File(result.files.single.path!);
-                    await ref
-                        .read(backupStateNotifierProvider.notifier)
-                        .restoreFromFile(file);
-                  }
-                },
-              ),
-            ],
-          ),
+                          // Let user pick a folder
+                          String? directoryPath =
+                          await FilePicker.platform.getDirectoryPath();
 
-          const SizedBox(height: 10),
+                          if (directoryPath == null) {
+                            // User canceled folder selection
+                            return;
+                          }
 
-          // Cloud Backup Expansion Tile
-          _StyledExpansionTile(
-            title: 'Cloud Backup',
-            subtitle: 'Sign in to sync with the cloud',
-            icon: Icons.cloud_upload_outlined,
-            isExpanded: _isCloudBackupExpanded,
-            onExpansionChanged: (isExpanded) {
-              setState(() => _isCloudBackupExpanded = isExpanded);
-            },
-            children: [
-              if (backupState.isLoading)
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(child: CircularProgressIndicator()),
+                          final fileName =
+                              'expenses_backup_${DateFormat('yyyy-MM-dd_HH-mm').format(DateTime.now())}.json';
+                          final file = File('$directoryPath/$fileName');
+
+                          await file.writeAsString(jsonString);
+
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                              Text('Backup saved to: $directoryPath/$fileName'),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Export failed: $e')),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _ActionTile(
+                      icon: Icons.upload_file_outlined,
+                      title: 'Import from File',
+                      subtitle: 'Restore data from a local JSON file',
+                      onTap: () async {
+                        FilePickerResult? result =
+                        await FilePicker.platform.pickFiles();
+                        if (result != null) {
+                          File file = File(result.files.single.path!);
+                          await ref
+                              .read(backupStateNotifierProvider.notifier)
+                              .restoreFromFile(file);
+
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Backup restored successfully.'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ),
-              if (!backupState.isLoading) ...[
-                if (backupState.user == null)
-                  ListTile(
-                    leading: const Icon(Icons.login),
-                    title: const Text('Sign in with Google'),
-                    subtitle: const Text('Required for cloud backup & restore'),
-                    onTap: () =>
-                        ref.read(backupStateNotifierProvider.notifier).signIn(),
-                  ),
-                if (backupState.user != null) ...[
-                  // CustomDivider(),
-                  ListTile(
-                    leading: const Icon(Icons.cloud_download_outlined),
-                    title: const Text('Restore from Cloud'),
-                    subtitle: backupState.lastBackupDate != null
-                        ? Text(
-                            'Last backup: ${DateFormat.yMd().add_jm().format(backupState.lastBackupDate!)}',
-                          )
-                        : const Text('No cloud backups found'),
-                    onTap: backupState.lastBackupDate != null
-                        ? () => ref
+
+                const SizedBox(height: 16),
+
+                // Cloud Backup Section
+                _SectionCard(
+                  title: 'Cloud Backup',
+                  description: backupState.user != null
+                      ? 'Signed in as ${backupState.user!.email}'
+                      : 'Sign in to sync with the cloud',
+                  icon: Icons.cloud_outlined,
+                  color: theme.colorScheme.tertiary,
+                  children: [
+                    if (backupState.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    if (!backupState.isLoading) ...[
+                      if (backupState.user == null)
+                        _ActionTile(
+                          icon: Icons.login,
+                          title: 'Sign in with Google',
+                          subtitle: 'Required for cloud backup & restore',
+                          onTap: () => ref
+                              .read(backupStateNotifierProvider.notifier)
+                              .signIn(),
+                        ),
+                      if (backupState.user != null) ...[
+                        _ActionTile(
+                          icon: Icons.cloud_download_outlined,
+                          title: 'Restore from Cloud',
+                          subtitle: backupState.lastBackupDate != null
+                              ? 'Last backup: ${DateFormat.yMd().add_jm().format(backupState.lastBackupDate!)}'
+                              : 'No cloud backups found',
+                          onTap: backupState.lastBackupDate != null
+                              ? () => ref
                               .read(backupStateNotifierProvider.notifier)
                               .restoreFromCloud()
-                        : null,
-                  ),
-
-                  // CustomDivider(),
-                  ListTile(
-                    leading: const Icon(Icons.cloud_upload_outlined),
-                    title: const Text('Backup to Cloud'),
-                    subtitle: Text('Signed in as ${backupState.user!.email}'),
-                    onTap: () => ref
-                        .read(backupStateNotifierProvider.notifier)
-                        .backupToCloud(),
-                  ),
-
-                  // CustomDivider(),
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text('Sign Out'),
-                    onTap: () => ref
-                        .read(backupStateNotifierProvider.notifier)
-                        .signOut(),
-                  ),
-                ],
-                if (backupState.error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
-                    child: Text(
-                      'Error: ${backupState.error}',
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ],
+                              : null,
+                        ),
+                        const SizedBox(height: 8),
+                        _ActionTile(
+                          icon: Icons.cloud_upload_outlined,
+                          title: 'Backup to Cloud',
+                          subtitle: 'Save your data to Google Drive',
+                          onTap: () => ref
+                              .read(backupStateNotifierProvider.notifier)
+                              .backupToCloud(),
+                        ),
+                        const SizedBox(height: 8),
+                        _ActionTile(
+                          icon: Icons.logout,
+                          title: 'Sign Out',
+                          subtitle: 'Disconnect from Google account',
+                          onTap: () => ref
+                              .read(backupStateNotifierProvider.notifier)
+                              .signOut(),
+                          isDestructive: true,
+                        ),
+                      ],
+                      if (backupState.error != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: theme.colorScheme.onErrorContainer,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Error: ${backupState.error}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onErrorContainer,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ]),
+            ),
           ),
         ],
       ),
@@ -165,30 +204,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-/// A reusable expansion tile with the desired outlined UI design.
-class _StyledExpansionTile extends StatelessWidget {
+class _SectionCard extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final String description;
   final IconData icon;
-  final bool isExpanded;
-  final ValueChanged<bool> onExpansionChanged;
+  final Color color;
   final List<Widget> children;
 
-  const _StyledExpansionTile({
+  const _SectionCard({
     required this.title,
-    required this.subtitle,
+    required this.description,
     required this.icon,
-    required this.isExpanded,
-    required this.onExpansionChanged,
+    required this.color,
     required this.children,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Card(
       elevation: 0,
-      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
@@ -196,24 +233,153 @@ class _StyledExpansionTile extends StatelessWidget {
           width: 1.0,
         ),
       ),
-      child: ExpansionTile(
-        onExpansionChanged: onExpansionChanged,
-        shape: const Border(), // Remove the default border when expanded
-        leading: Icon(icon, color: theme.colorScheme.onSurfaceVariant),
-        title: Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section Header
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Section Content
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final bool isDestructive;
+
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isEnabled = onTap != null;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.colorScheme.outline.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDestructive
+                      ? theme.colorScheme.error.withOpacity(0.1)
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: isEnabled
+                      ? (isDestructive
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant)
+                      : theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: isEnabled
+                            ? (isDestructive
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurface)
+                            : theme.colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isEnabled
+                            ? theme.colorScheme.onSurfaceVariant
+                            : theme.colorScheme.onSurfaceVariant
+                            .withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isEnabled)
+                Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  size: 20,
+                ),
+            ],
           ),
         ),
-        subtitle: isExpanded
-            ? null
-            : Text(
-                subtitle,
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-              ),
-        childrenPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-        children: children,
       ),
     );
   }

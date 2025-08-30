@@ -1,5 +1,6 @@
 import 'package:finora/data/local/app_database.dart';
 import 'package:finora/data/repository/expense_repository.dart';
+import 'package:finora/features/home/widgets/edit_list_bottom_sheet.dart';
 import 'package:finora/routing/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,209 +40,398 @@ class ListPageCard extends ConsumerWidget {
       ).showSnackBar(SnackBar(content: Text('${listPage.name} deleted')));
     }
 
-    return Slidable(
-      key: ValueKey(listPage.id),
-      endActionPane: ActionPane(
-        motion: const DrawerMotion(),
-        extentRatio: 0.25,
-        children: [
-          SlidableAction(
-            onPressed: (_) => deleteList(),
-            backgroundColor: theme.colorScheme.error,
-            foregroundColor: theme.colorScheme.onError,
-            icon: Icons.delete_outline,
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(12),
-              bottomRight: Radius.circular(12),
-            ),
-          ),
-        ],
-      ),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 0,
-        margin: const EdgeInsets.only(bottom: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.2),
-            width: 1.0,
-          ),
+    void editList() {
+      HapticFeedback.lightImpact();
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: InkWell(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            context.pushNamed(
-              AppRoute.listDetails.name,
-              pathParameters: {'listId': listPage.id},
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Top Section (Name and Status)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      listPage.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    stats.when(
-                      data: (checks) {
-                        final total = checks.fold<double>(
-                          0,
-                          (sum, item) => sum + item.number,
-                        );
-                        final hasBudget = listPage.budget > 0;
-                        final isOverBudget =
-                            hasBudget && total > listPage.budget;
+        builder: (_) => EditListBottomSheet(listPage: listPage),
+      );
+    }
 
-                        return Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: [
-                            _InfoChip(
-                              icon: Icons.list_alt,
-                              label: '${checks.length} items',
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8), // Reduced from 12
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12), // Reduced from 16
+        child: Slidable(
+          key: ValueKey(listPage.id),
+          endActionPane: ActionPane(
+            motion: const BehindMotion(),
+            extentRatio: 0.35, // Reduced from 0.4
+            dragDismissible: false,
+            children: [
+              SizedBox(width: 8),
+              // Edit Action
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        theme.colorScheme.primary.withOpacity(0.1),
+                        theme.colorScheme.primary.withOpacity(0.15),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: editList,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 36, // Reduced from 44
+                            height: 36, // Reduced from 44
+                            decoration: BoxDecoration(
                               color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(
+                                10,
+                              ), // Reduced from 12
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withOpacity(
+                                    0.3,
+                                  ),
+                                  blurRadius: 6, // Reduced from 8
+                                  offset: const Offset(
+                                    0,
+                                    1,
+                                  ), // Reduced from (0, 2)
+                                ),
+                              ],
                             ),
-                            if (hasBudget)
-                              _InfoChip(
-                                icon: isOverBudget
-                                    ? Icons.warning_amber
-                                    : Icons.account_balance_wallet,
-                                label: isOverBudget
-                                    ? 'Over Budget'
-                                    : 'On Budget',
-                                color: isOverBudget
-                                    ? theme.colorScheme.error
-                                    : theme.colorScheme.tertiary,
-                              ),
-                          ],
-                        );
-                      },
-                      loading: () => const _InfoChip(
-                        icon: Icons.hourglass_empty,
-                        label: 'Loading...',
-                        color: Colors.grey,
-                      ),
-                      error: (_, __) => const _InfoChip(
-                        icon: Icons.error_outline,
-                        label: 'Error',
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Middle Section (Progress and Stats)
-                stats.when(
-                  data: (checks) {
-                    final total = checks.fold<double>(
-                      0,
-                      (sum, item) => sum + item.number,
-                    );
-                    final checked = checks
-                        .where((c) => c.isSelected)
-                        .fold<double>(0, (sum, item) => sum + item.number);
-                    final hasBudget = listPage.budget > 0;
-                    final useCompactFormat =
-                        total > 999999 ||
-                        (hasBudget && listPage.budget > 999999);
-                    final numberFormat = useCompactFormat
-                        ? compactCurrencyFormat
-                        : currencyFormat;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 12),
-                        if (hasBudget)
-                          _BudgetProgressBar(
-                            total: total,
-                            budget: listPage.budget,
-                            theme: theme,
-                          )
-                        else
-                          _SelectionProgressBar(
-                            total: total,
-                            checked: checked,
-                            theme: theme,
+                            child: Icon(
+                              Icons.edit_outlined,
+                              color: theme.colorScheme.onPrimary,
+                              size: 18, // Reduced from 20
+                            ),
                           ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total Value',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            Text(
-                              numberFormat.format(total),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                  loading: () => const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                  error: (_, __) => const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: Icon(Icons.error_outline, size: 20)),
-                  ),
-                ),
-
-                // Bottom Section (Actions and Metadata)
-                stats.when(
-                  data: (checks) {
-                    final checkedCount = checks
-                        .where((c) => c.isSelected)
-                        .length;
-                    final hasBudget = listPage.budget > 0;
-
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$checkedCount/${checks.length} selected',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (hasBudget)
+                          const SizedBox(height: 4), // Reduced from 8
                           Text(
-                            'Budget: ${currencyFormat.format(listPage.budget)}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            'Edit',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                              fontSize: 10, // Added smaller font
                             ),
                           ),
-                      ],
-                    );
-                  },
-                  loading: () => const SizedBox(),
-                  error: (_, __) => const SizedBox(),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ],
+              ),
+              // Delete Action
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        theme.colorScheme.error.withOpacity(0.1),
+                        theme.colorScheme.error.withOpacity(0.15),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: deleteList,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 36, // Reduced from 44
+                            height: 36, // Reduced from 44
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.error,
+                              borderRadius: BorderRadius.circular(
+                                10,
+                              ), // Reduced from 12
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.error.withOpacity(
+                                    0.3,
+                                  ),
+                                  blurRadius: 6, // Reduced from 8
+                                  offset: const Offset(
+                                    0,
+                                    1,
+                                  ), // Reduced from (0, 2)
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.delete_outline,
+                              color: theme.colorScheme.onError,
+                              size: 18, // Reduced from 20
+                            ),
+                          ),
+                          const SizedBox(height: 4), // Reduced from 8
+                          Text(
+                            'Delete',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.error,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                              fontSize: 10, // Added smaller font
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12), // Reduced from 16
+              side: BorderSide(
+                color: theme.colorScheme.outline.withOpacity(0.2),
+                width: 1.0,
+              ),
+            ),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                context.pushNamed(
+                  AppRoute.listDetails.name,
+                  pathParameters: {'listId': listPage.id},
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(12.0), // Reduced from 16
+                child: Container(
+                  height: 80, // Fixed height for all cards
+                  child: stats.when(
+                    data: (checks) {
+                      final total = checks.fold<double>(
+                        0,
+                        (sum, item) => sum + item.number,
+                      );
+                      final checked = checks
+                          .where((c) => c.isSelected)
+                          .fold<double>(0, (sum, item) => sum + item.number);
+                      final checkedCount = checks
+                          .where((c) => c.isSelected)
+                          .length;
+                      final hasBudget = listPage.budget > 0;
+                      final isOverBudget = hasBudget && total > listPage.budget;
+                      final useCompactFormat =
+                          total > 999999 ||
+                          (hasBudget && listPage.budget > 999999);
+                      final numberFormat = useCompactFormat
+                          ? compactCurrencyFormat
+                          : currencyFormat;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Header row with name and key stats
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      listPage.name,
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '$checkedCount/${checks.length} selected',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Total value prominently displayed
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    numberFormat.format(total),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                  ),
+                                  // Always reserve space for budget info to maintain consistent height
+                                  SizedBox(
+                                    height: 16,
+                                    child: hasBudget
+                                        ? Text(
+                                            'of ${numberFormat.format(listPage.budget)}',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          // Fixed height bottom section for status
+                          SizedBox(
+                            height: 18,
+                            child: Row(
+                              children: [
+                                if (isOverBudget)
+                                  _CompactChip(
+                                    icon: Icons.warning_amber,
+                                    label: 'Over Budget',
+                                    color: theme.colorScheme.error,
+                                  )
+                                else if (checks.length > 10)
+                                  _CompactChip(
+                                    icon: Icons.list_alt,
+                                    label: '${checks.length} items',
+                                    color: theme.colorScheme.primary,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                    loading: () => Container(
+                      height: 80, // Same fixed height
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      listPage.name,
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Loading...',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Fixed height bottom section
+                          const SizedBox(height: 18),
+                        ],
+                      ),
+                    ),
+                    error: (_, __) => Container(
+                      height: 80, // Same fixed height
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      listPage.name,
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Error loading data',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme.colorScheme.error,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.error_outline,
+                                size: 16,
+                                color: theme.colorScheme.error,
+                              ),
+                            ],
+                          ),
+                          // Fixed height bottom section for status
+                          const SizedBox(height: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -250,12 +440,12 @@ class ListPageCard extends ConsumerWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
+class _CompactChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
 
-  const _InfoChip({
+  const _CompactChip({
     required this.icon,
     required this.label,
     required this.color,
@@ -263,128 +453,27 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(label, style: TextStyle(fontSize: 12, color: color)),
-      avatar: Icon(icon, size: 16, color: color),
-      backgroundColor: color.withValues(alpha: 0.1),
-      side: BorderSide.none,
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-      labelPadding: const EdgeInsets.only(right: 4),
-    );
-  }
-}
-
-class _BudgetProgressBar extends StatelessWidget {
-  final double total;
-  final double budget;
-  final ThemeData theme;
-
-  const _BudgetProgressBar({
-    required this.total,
-    required this.budget,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (total / budget).clamp(0.0, 1.0);
-    final isOverBudget = total > budget;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Budget Usage',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            Text(
-              '${(progress * 100).toStringAsFixed(0)}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: isOverBudget
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.3),
-              color: isOverBudget
-                  ? theme.colorScheme.error
-                  : theme.colorScheme.primary,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SelectionProgressBar extends StatelessWidget {
-  final double total;
-  final double checked;
-  final ThemeData theme;
-
-  const _SelectionProgressBar({
-    required this.total,
-    required this.checked,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = total > 0 ? (checked / total) : 0.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Selection Progress',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            Text(
-              '${(progress * 100).toStringAsFixed(0)}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.3),
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

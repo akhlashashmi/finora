@@ -479,25 +479,33 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
     super.dispose();
   }
 
-  /// Parses input with robust pattern matching for numbers and expressions
+  /// Tries to evaluate a string as a math expression first, then falls back
+  /// to parsing it as a simple number (which supports percentages, etc.).
+  double? _evaluateOrParseNumber(String numberStr) {
+    // Try full math evaluation first. This handles "12+3", "5*4", "12.5" etc.
+    final mathResult = _evaluateMathExpression(numberStr);
+    if (mathResult != null) {
+      return mathResult;
+    }
+
+    // Fallback for formats not supported by the math parser, like percentages.
+    final simpleParseResult = _parseNumber(numberStr);
+    return simpleParseResult;
+  }
+
+  /// Parses input for patterns like "Title Number" or "Number Title".
+  /// This is called only after the primary math expression check fails in _submit.
   ParsedInput _parseInput(String input) {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return ParsedInput();
 
-    // Try to evaluate as mathematical expression first
-    final mathResult = _evaluateMathExpression(trimmed);
-    if (mathResult != null) {
-      return ParsedInput(number: mathResult);
-    }
-
-    // Pattern 1: Number at end (e.g., "Coffee 3400")
-    final endNumberMatch = RegExp(
-      r'^(.*?)\s+([\d\.,\+\-\*\/\(\)]+)$',
-    ).firstMatch(trimmed);
+    // Pattern 1: Expression/Number at the end (e.g., "Coffee 12+3")
+    final endNumberMatch =
+    RegExp(r'^(.*?)\s+([\d\.,\+\-\*\/\(\)%\/]+)$').firstMatch(trimmed);
     if (endNumberMatch != null) {
       final title = endNumberMatch.group(1)?.trim();
-      final numberPart = endNumberMatch.group(2)!.replaceAll(',', '');
-      final number = _parseNumber(numberPart);
+      final numberPart = endNumberMatch.group(2)!;
+      final number = _evaluateOrParseNumber(numberPart); // Use new helper
       if (number != null) {
         return ParsedInput(
           number: number,
@@ -506,14 +514,13 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
       }
     }
 
-    // Pattern 2: Number at beginning (e.g., "3400 Coffee")
-    final startNumberMatch = RegExp(
-      r'^([\d\.,\+\-\*\/\(\)]+)\s+(.*?)$',
-    ).firstMatch(trimmed);
+    // Pattern 2: Expression/Number at the beginning (e.g., "12+3 Coffee")
+    final startNumberMatch =
+    RegExp(r'^([\d\.,\+\-\*\/\(\)%\/]+)\s+(.*?)$').firstMatch(trimmed);
     if (startNumberMatch != null) {
-      final numberPart = startNumberMatch.group(1)!.replaceAll(',', '');
+      final numberPart = startNumberMatch.group(1)!;
       final title = startNumberMatch.group(2)?.trim();
-      final number = _parseNumber(numberPart);
+      final number = _evaluateOrParseNumber(numberPart); // Use new helper
       if (number != null) {
         return ParsedInput(
           number: number,
@@ -522,41 +529,44 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
       }
     }
 
-    // Pattern 3: Only number
-    final onlyNumber = _parseNumber(trimmed.replaceAll(',', ''));
+    // Pattern 3: The whole string is just a simple number or percentage
+    final onlyNumber = _evaluateOrParseNumber(trimmed);
     if (onlyNumber != null) {
       return ParsedInput(number: onlyNumber);
     }
 
-    // Pattern 4: Only text
+    // Pattern 4: The whole string is just text
     return ParsedInput(title: trimmed);
   }
 
-  /// Evaluates mathematical expressions using proper BODMAS rules
+  /// Evaluates mathematical expressions using proper BODMAS rules.
   double? _evaluateMathExpression(String expression) {
     try {
-      // Clean the expression - remove any non-math characters except operators and numbers
-      final cleanExpression = expression.replaceAll(
-        RegExp(r'[^\d\.,\+\-\*\/\(\)]'),
-        '',
-      );
-      if (cleanExpression.isEmpty) return null;
+      // Prepare the expression for the parser.
+      String preparedExpression =
+      expression.replaceAll(',', '').replaceAll(' ', '');
+      if (preparedExpression.isEmpty) return null;
 
       Parser p = Parser();
-      Expression exp = p.parse(cleanExpression);
+      Expression exp = p.parse(preparedExpression);
       ContextModel cm = ContextModel();
       final result = exp.evaluate(EvaluationType.REAL, cm);
 
-      return result is double ? result : result.toDouble();
+      // Ensure the result is a finite number.
+      if (result is double && result.isFinite) {
+        return result;
+      }
+      return null;
     } catch (e) {
+      // If parsing or evaluation fails, it's not a valid math expression.
       return null;
     }
   }
 
-  /// Robust number parsing with fallbacks
+  /// Robustly parses a string into a double, handling percentages and fractions.
   double? _parseNumber(String numberStr) {
     try {
-      // Handle percentage values
+      // Handle percentage values (e.g., "50%")
       if (numberStr.endsWith('%')) {
         final value = double.tryParse(
           numberStr.substring(0, numberStr.length - 1),
@@ -564,7 +574,7 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
         return value != null ? value / 100 : null;
       }
 
-      // Handle fractions
+      // Handle fractions (e.g., "3/4")
       if (numberStr.contains('/')) {
         final parts = numberStr.split('/');
         if (parts.length == 2) {
@@ -586,35 +596,36 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return;
 
-    // Try to evaluate as math expression first
+    // Priority 1: Check if the entire input is a solvable math expression.
     final mathResult = _evaluateMathExpression(trimmed);
-    if (mathResult != null) {
-      // Replace the text with the evaluated result
-      final resultStr = mathResult % 1 == 0
-          ? mathResult.toInt().toString()
-          : mathResult.toString();
-      setState(() {
-        _controller.text = resultStr;
-        _controller.selection = TextSelection.fromPosition(
-          TextPosition(offset: _controller.text.length),
-        );
-      });
-      return; // Don't add to list
-    }
+    final containsOperator = RegExp(r'[\+\-\*\/]').hasMatch(trimmed);
 
-    // Otherwise, proceed with your existing addCheck logic
-    final parsed = _parseInput(value);
-    if (parsed.number != null || parsed.title != null) {
+    // Treat as a "calculation" if it evaluates and contains an operator.
+    // This distinguishes "5*4" from a simple entry like "20".
+    if (mathResult != null && containsOperator) {
+      // Use the expression as the title and the result as the number.
       ref.read(expenseRepositoryProvider).addCheck(
         listId: widget.listId,
-        number: parsed.number ?? 0,
+        number: mathResult,
+        title: trimmed,
+      );
+      _controller.clear();
+      widget.onAdded();
+      return; // Stop processing.
+    }
+
+    // Priority 2: If not a pure calculation, parse for mixed patterns.
+    final parsed = _parseInput(trimmed);
+    if (parsed.isValid) {
+      ref.read(expenseRepositoryProvider).addCheck(
+        listId: widget.listId,
+        number: parsed.number ?? 0.0,
         title: parsed.title,
       );
       _controller.clear();
       widget.onAdded();
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -626,7 +637,7 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
         controller: _controller,
         focusNode: widget.focusNode,
         keyboardType: _isNumericKeyboard
-            ? const TextInputType.numberWithOptions(decimal: true, signed: true)
+            ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
         textInputAction: TextInputAction.done,
         style: TextStyle(
@@ -635,8 +646,8 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
-          border: InputBorder.none, // No border at all
-          focusedBorder: InputBorder.none, // Keep it borderless when focused
+          border: InputBorder.none,
+          focusedBorder: InputBorder.none,
           prefixIcon: Padding(
             padding: const EdgeInsets.only(left: 12, right: 8),
             child: Icon(Icons.add, color: theme.colorScheme.primary, size: 24),
@@ -655,7 +666,7 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
                 });
                 widget.focusNode.unfocus();
                 Future.delayed(
-                  const Duration(milliseconds: 10),
+                  const Duration(milliseconds: 50),
                       () => widget.focusNode.requestFocus(),
                 );
               },
@@ -668,8 +679,7 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
             vertical: 16,
             horizontal: 16,
           ),
-          hintText:
-          'Enter item (e.g., "Coffee 5.99", "2+3*4 apples", or just "100")',
+          hintText: 'Enter item (e.g., "Coffee 5.99" or "12*5+2")',
           hintStyle: TextStyle(
             color: theme.colorScheme.onSurface.withOpacity(0.4),
             fontSize: 14,
@@ -681,12 +691,13 @@ class _NewItemInputState extends ConsumerState<NewItemInput> {
   }
 }
 
-/// Data class to hold parsed input results
+/// Data class to hold parsed input results.
 class ParsedInput {
   final double? number;
   final String? title;
 
   ParsedInput({this.number, this.title});
 
+  /// An input is valid if it has a number or a title.
   bool get isValid => number != null || title != null;
 }

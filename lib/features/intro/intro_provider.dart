@@ -6,7 +6,6 @@ part 'intro_provider.g.dart';
 @Riverpod(keepAlive: true)
 class IntroCompletedNotifier extends _$IntroCompletedNotifier {
   // The build method will be async and return the initial state from SharedPreferences.
-  // Riverpod will automatically handle the loading/error/data states for us.
   @override
   Future<bool> build() async {
     final prefs = await SharedPreferences.getInstance();

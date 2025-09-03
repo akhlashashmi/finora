@@ -8,8 +8,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_database.g.dart';
 
-// --- TABLES ---
-
 @DataClassName('ListPage')
 class ListPages extends Table {
   TextColumn get id => text()();
@@ -17,6 +15,9 @@ class ListPages extends Table {
   RealColumn get budget => real().withDefault(const Constant(0.0))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  BoolColumn get isPinned => boolean().withDefault(const Constant(false))();
+  BoolColumn get isProtected => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -36,19 +37,41 @@ class Checks extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-
-// --- DATABASE ---
-
 @DriftDatabase(tables: [ListPages, Checks])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(QueryExecutor e) : super(e);
+  AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          await m.addColumn(listPages, listPages.sortOrder);
+          await m.addColumn(listPages, listPages.isPinned);
+          await m.addColumn(listPages, listPages.isProtected); // Add for v1 -> v3
+          // Set initial sort order for v1 users
+          await customStatement('''
+            UPDATE list_pages 
+            SET sort_order = (
+              SELECT ROW_NUMBER() OVER (ORDER BY created_at) - 1
+              FROM (SELECT * FROM list_pages) as ranked
+              WHERE ranked.id = list_pages.id
+            )
+          ''');
+        }
+        if (from < 3) {
+          await m.addColumn(listPages, listPages.isProtected);
+        }
+      },
+    );
+  }
 }
-
-
-// --- PROVIDERS ---
 
 @Riverpod(keepAlive: true)
 AppDatabase appDatabase(Ref ref) {

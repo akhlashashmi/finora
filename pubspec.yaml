@@ -2,7 +2,7 @@ name: finora
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.0+3
+version: 2.0.0+5
 
 environment:
   sdk: '3.9.0'
@@ -23,6 +23,7 @@ dependencies:
   drift: ^2.28.1
   drift_flutter: ^0.2.5
   sqlite3_flutter_libs: ^0.5.39
+  flutter_animate:
 
   # Routing
   go_router: ^13.2.0
@@ -38,6 +39,7 @@ dependencies:
   flutter_slidable: ^4.0.1
   shared_preferences: ^2.5.3
   math_expressions:
+  icons_plus: ^5.0.0
 
 
 

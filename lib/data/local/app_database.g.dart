@@ -63,6 +63,48 @@ class $ListPagesTable extends ListPages
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isPinnedMeta = const VerificationMeta(
+    'isPinned',
+  );
+  @override
+  late final GeneratedColumn<bool> isPinned = GeneratedColumn<bool>(
+    'is_pinned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_pinned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isProtectedMeta = const VerificationMeta(
+    'isProtected',
+  );
+  @override
+  late final GeneratedColumn<bool> isProtected = GeneratedColumn<bool>(
+    'is_protected',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_protected" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -70,6 +112,9 @@ class $ListPagesTable extends ListPages
     budget,
     createdAt,
     updatedAt,
+    sortOrder,
+    isPinned,
+    isProtected,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -118,6 +163,27 @@ class $ListPagesTable extends ListPages
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('is_pinned')) {
+      context.handle(
+        _isPinnedMeta,
+        isPinned.isAcceptableOrUnknown(data['is_pinned']!, _isPinnedMeta),
+      );
+    }
+    if (data.containsKey('is_protected')) {
+      context.handle(
+        _isProtectedMeta,
+        isProtected.isAcceptableOrUnknown(
+          data['is_protected']!,
+          _isProtectedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -147,6 +213,18 @@ class $ListPagesTable extends ListPages
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      isPinned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_pinned'],
+      )!,
+      isProtected: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_protected'],
+      )!,
     );
   }
 
@@ -162,12 +240,18 @@ class ListPage extends DataClass implements Insertable<ListPage> {
   final double budget;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int sortOrder;
+  final bool isPinned;
+  final bool isProtected;
   const ListPage({
     required this.id,
     required this.name,
     required this.budget,
     required this.createdAt,
     required this.updatedAt,
+    required this.sortOrder,
+    required this.isPinned,
+    required this.isProtected,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -177,6 +261,9 @@ class ListPage extends DataClass implements Insertable<ListPage> {
     map['budget'] = Variable<double>(budget);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['is_pinned'] = Variable<bool>(isPinned);
+    map['is_protected'] = Variable<bool>(isProtected);
     return map;
   }
 
@@ -187,6 +274,9 @@ class ListPage extends DataClass implements Insertable<ListPage> {
       budget: Value(budget),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      sortOrder: Value(sortOrder),
+      isPinned: Value(isPinned),
+      isProtected: Value(isProtected),
     );
   }
 
@@ -201,6 +291,9 @@ class ListPage extends DataClass implements Insertable<ListPage> {
       budget: serializer.fromJson<double>(json['budget']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isPinned: serializer.fromJson<bool>(json['isPinned']),
+      isProtected: serializer.fromJson<bool>(json['isProtected']),
     );
   }
   @override
@@ -212,6 +305,9 @@ class ListPage extends DataClass implements Insertable<ListPage> {
       'budget': serializer.toJson<double>(budget),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'isPinned': serializer.toJson<bool>(isPinned),
+      'isProtected': serializer.toJson<bool>(isProtected),
     };
   }
 
@@ -221,12 +317,18 @@ class ListPage extends DataClass implements Insertable<ListPage> {
     double? budget,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? sortOrder,
+    bool? isPinned,
+    bool? isProtected,
   }) => ListPage(
     id: id ?? this.id,
     name: name ?? this.name,
     budget: budget ?? this.budget,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    sortOrder: sortOrder ?? this.sortOrder,
+    isPinned: isPinned ?? this.isPinned,
+    isProtected: isProtected ?? this.isProtected,
   );
   ListPage copyWithCompanion(ListPagesCompanion data) {
     return ListPage(
@@ -235,6 +337,11 @@ class ListPage extends DataClass implements Insertable<ListPage> {
       budget: data.budget.present ? data.budget.value : this.budget,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isPinned: data.isPinned.present ? data.isPinned.value : this.isPinned,
+      isProtected: data.isProtected.present
+          ? data.isProtected.value
+          : this.isProtected,
     );
   }
 
@@ -245,13 +352,25 @@ class ListPage extends DataClass implements Insertable<ListPage> {
           ..write('name: $name, ')
           ..write('budget: $budget, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isPinned: $isPinned, ')
+          ..write('isProtected: $isProtected')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, budget, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    budget,
+    createdAt,
+    updatedAt,
+    sortOrder,
+    isPinned,
+    isProtected,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -260,7 +379,10 @@ class ListPage extends DataClass implements Insertable<ListPage> {
           other.name == this.name &&
           other.budget == this.budget &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.sortOrder == this.sortOrder &&
+          other.isPinned == this.isPinned &&
+          other.isProtected == this.isProtected);
 }
 
 class ListPagesCompanion extends UpdateCompanion<ListPage> {
@@ -269,6 +391,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
   final Value<double> budget;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> sortOrder;
+  final Value<bool> isPinned;
+  final Value<bool> isProtected;
   final Value<int> rowid;
   const ListPagesCompanion({
     this.id = const Value.absent(),
@@ -276,6 +401,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
     this.budget = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isPinned = const Value.absent(),
+    this.isProtected = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ListPagesCompanion.insert({
@@ -284,6 +412,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
     this.budget = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.sortOrder = const Value.absent(),
+    this.isPinned = const Value.absent(),
+    this.isProtected = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -295,6 +426,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
     Expression<double>? budget,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? sortOrder,
+    Expression<bool>? isPinned,
+    Expression<bool>? isProtected,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -303,6 +437,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
       if (budget != null) 'budget': budget,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (isPinned != null) 'is_pinned': isPinned,
+      if (isProtected != null) 'is_protected': isProtected,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -313,6 +450,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
     Value<double>? budget,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? sortOrder,
+    Value<bool>? isPinned,
+    Value<bool>? isProtected,
     Value<int>? rowid,
   }) {
     return ListPagesCompanion(
@@ -321,6 +461,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
       budget: budget ?? this.budget,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isPinned: isPinned ?? this.isPinned,
+      isProtected: isProtected ?? this.isProtected,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -343,6 +486,15 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (isPinned.present) {
+      map['is_pinned'] = Variable<bool>(isPinned.value);
+    }
+    if (isProtected.present) {
+      map['is_protected'] = Variable<bool>(isProtected.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -357,6 +509,9 @@ class ListPagesCompanion extends UpdateCompanion<ListPage> {
           ..write('budget: $budget, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isPinned: $isPinned, ')
+          ..write('isProtected: $isProtected, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -849,6 +1004,9 @@ typedef $$ListPagesTableCreateCompanionBuilder =
       Value<double> budget,
       required DateTime createdAt,
       required DateTime updatedAt,
+      Value<int> sortOrder,
+      Value<bool> isPinned,
+      Value<bool> isProtected,
       Value<int> rowid,
     });
 typedef $$ListPagesTableUpdateCompanionBuilder =
@@ -858,6 +1016,9 @@ typedef $$ListPagesTableUpdateCompanionBuilder =
       Value<double> budget,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> sortOrder,
+      Value<bool> isPinned,
+      Value<bool> isProtected,
       Value<int> rowid,
     });
 
@@ -916,6 +1077,21 @@ class $$ListPagesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPinned => $composableBuilder(
+    column: $table.isPinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isProtected => $composableBuilder(
+    column: $table.isProtected,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -978,6 +1154,21 @@ class $$ListPagesTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPinned => $composableBuilder(
+    column: $table.isPinned,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isProtected => $composableBuilder(
+    column: $table.isProtected,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ListPagesTableAnnotationComposer
@@ -1003,6 +1194,17 @@ class $$ListPagesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPinned =>
+      $composableBuilder(column: $table.isPinned, builder: (column) => column);
+
+  GeneratedColumn<bool> get isProtected => $composableBuilder(
+    column: $table.isProtected,
+    builder: (column) => column,
+  );
 
   Expression<T> checksRefs<T extends Object>(
     Expression<T> Function($$ChecksTableAnnotationComposer a) f,
@@ -1063,6 +1265,9 @@ class $$ListPagesTableTableManager
                 Value<double> budget = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isPinned = const Value.absent(),
+                Value<bool> isProtected = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ListPagesCompanion(
                 id: id,
@@ -1070,6 +1275,9 @@ class $$ListPagesTableTableManager
                 budget: budget,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                sortOrder: sortOrder,
+                isPinned: isPinned,
+                isProtected: isProtected,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1079,6 +1287,9 @@ class $$ListPagesTableTableManager
                 Value<double> budget = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isPinned = const Value.absent(),
+                Value<bool> isProtected = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ListPagesCompanion.insert(
                 id: id,
@@ -1086,6 +1297,9 @@ class $$ListPagesTableTableManager
                 budget: budget,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                sortOrder: sortOrder,
+                isPinned: isPinned,
+                isProtected: isProtected,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

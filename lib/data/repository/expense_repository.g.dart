@@ -6,7 +6,7 @@ part of 'expense_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$uuidHash() => r'008bb7d89c90b6a78101cc9f78ba79ca49982a6c';
+String _$uuidHash() => r'63633bd7add95a8e80ee3cd2fbccd7919f6eebc9';
 
 /// See also [uuid].
 @ProviderFor(uuid)
@@ -23,7 +23,7 @@ final uuidProvider = Provider<Uuid>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef UuidRef = ProviderRef<Uuid>;
-String _$expenseRepositoryHash() => r'2f3d320596964d289d9087247e0fdd18ba6bfc2b';
+String _$expenseRepositoryHash() => r'0af707e4126f646545d959ee9f0919da74040277';
 
 /// See also [expenseRepository].
 @ProviderFor(expenseRepository)

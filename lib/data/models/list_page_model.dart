@@ -7,6 +7,9 @@ class ListPageModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<CheckModel> checks;
+  final int sortOrder;
+  final bool isPinned;
+  final bool isProtected;
 
   ListPageModel({
     required this.id,
@@ -15,9 +18,11 @@ class ListPageModel {
     required this.createdAt,
     required this.updatedAt,
     this.checks = const [],
+    this.sortOrder = 0,
+    this.isPinned = false,
+    this.isProtected = false,
   });
 
-  // ADDED COPYWITH METHOD
   ListPageModel copyWith({
     String? id,
     String? name,
@@ -25,6 +30,9 @@ class ListPageModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     List<CheckModel>? checks,
+    int? sortOrder,
+    bool? isPinned,
+    bool? isProtected,
   }) {
     return ListPageModel(
       id: id ?? this.id,
@@ -33,6 +41,9 @@ class ListPageModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       checks: checks ?? this.checks,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isPinned: isPinned ?? this.isPinned,
+      isProtected: isProtected ?? this.isProtected,
     );
   }
 
@@ -47,6 +58,9 @@ class ListPageModel {
           ?.map((e) => CheckModel.fromJson(e as Map<String, dynamic>))
           .toList() ??
           [],
+      sortOrder: json['sortOrder'] as int? ?? 0,
+      isPinned: json['isPinned'] as bool? ?? false,
+      isProtected: json['isProtected'] as bool? ?? false,
     );
   }
 
@@ -57,5 +71,8 @@ class ListPageModel {
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
     'checks': checks.map((c) => c.toJson()).toList(),
+    'sortOrder': sortOrder,
+    'isPinned': isPinned,
+    'isProtected': isProtected,
   };
 }

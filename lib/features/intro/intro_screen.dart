@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finora/features/intro/intro_provider.dart';
 
-// Extracted constants for maintainability
 const _kHorizontalPadding = 24.0;
 const _kIllustrationSize = 80.0;
 const _kIconSize = 36.0;
@@ -20,7 +19,6 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Pre-defined pages data (moved from didChangeDependencies for better predictability)
   late final List<IntroPage> _pages = _buildPages(context);
 
   @override
@@ -32,34 +30,54 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
   List<IntroPage> _buildPages(BuildContext context) {
     final theme = Theme.of(context);
     return [
+      // Page 1: Focus on the core "Smart Input" feature
       IntroPage(
-        title: 'Welcome to Finora Lists',
+        title: 'Smarter Lists Start Here',
+        // Subtitle now specifies the purpose and types of lists.
         subtitle:
-        'Organize everything in one place — expenses, budgets, shopping, or wishlists.',
+            'From daily expenses and shopping lists to budgets and wishlists, mindmap your goals and capture them effortlessly.',
+        highlights: ['Coffee 15.99', '15% tip on 45', 'Groceries: 25+15'],
         color: theme.colorScheme.primary,
-        illustration: Icons.account_balance_wallet_outlined,
+        illustration: Icons.auto_fix_high,
       ),
+      // Page 2: Focus on List & Item Management
       IntroPage(
-        title: 'Track What Matters',
+        title: 'Organize with Precision',
         subtitle:
-        'Quickly create and manage lists with smart categorization and easy inputs.',
-        color: theme.colorScheme.primary,
-        illustration: Icons.show_chart_outlined,
+            'Manage your lists and items with powerful, intuitive controls designed for speed and simplicity.',
+        highlights: [
+          'Tap to select',
+          'Swipe to edit/delete',
+          'Pin important lists',
+        ],
+        color: theme.colorScheme.secondary,
+        illustration: Icons.edit_note_rounded,
       ),
+      // Page 3: Focus on Statistics and Budgeting
       IntroPage(
-        title: 'Visualize & Plan',
+        title: 'Gain Financial Clarity',
         subtitle:
-        'Have a budget and you want to mind map with your wishlist? Let\'s continue. '
-            'Plan your goals and connect them with your budget effortlessly.',
-        color: theme.colorScheme.primary,
-        illustration: Icons.map_outlined,
+            'Turn your lists into insights. Track spending, visualize budgets, and make informed decisions with detailed stats.',
+        highlights: [
+          'Interactive budget tracking',
+          'Detailed stats overlay',
+          'Cycle through key metrics',
+        ],
+        color: theme.colorScheme.tertiary,
+        illustration: Icons.analytics_outlined,
       ),
+      // Page 4: Focus on Security and Data Backup
       IntroPage(
-        title: 'Backup & Restore',
+        title: 'Your Data, Safe & Sound',
         subtitle:
-        'Keep your lists safe with local and cloud backup options, always accessible.',
+            'Keep your information secure with app-wide PIN protection and never lose your data with local & cloud backups.',
+        highlights: [
+          'Protect lists with PIN',
+          'Cloud & Local Backups',
+          'Restore anytime',
+        ],
         color: theme.colorScheme.primary,
-        illustration: Icons.cloud_done_outlined,
+        illustration: Icons.security_rounded,
       ),
     ];
   }
@@ -75,9 +93,7 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
         curve: Curves.easeOut,
       );
     } else {
-      await ref
-          .read(introCompletedNotifierProvider.notifier)
-          .completeIntro();
+      await ref.read(introCompletedNotifierProvider.notifier).completeIntro();
     }
   }
 
@@ -96,14 +112,11 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             _IntroHeader(
               showSkip: !isLastPage,
               onSkip: _onSkipPressed,
               accentColor: currentPage.color,
             ),
-
-            // Content
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
@@ -114,8 +127,6 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
                 },
               ),
             ),
-
-            // Footer
             _IntroFooter(
               currentPage: _currentPage,
               totalPages: _pages.length,
@@ -130,7 +141,6 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
   }
 }
 
-// Extracted header widget for better separation of concerns
 class _IntroHeader extends StatelessWidget {
   final bool showSkip;
   final VoidCallback onSkip;
@@ -146,14 +156,16 @@ class _IntroHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        _kHorizontalPadding, 16, _kHorizontalPadding, 0,
+        _kHorizontalPadding,
+        16,
+        _kHorizontalPadding,
+        0,
       ),
       child: SizedBox(
         height: 48,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Logo
             Row(
               children: [
                 Container(
@@ -180,8 +192,6 @@ class _IntroHeader extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Skip button
             if (showSkip)
               TextButton(
                 onPressed: onSkip,
@@ -195,7 +205,7 @@ class _IntroHeader extends StatelessWidget {
                 ),
               )
             else
-              const SizedBox(width: 48), // Placeholder for layout consistency
+              const SizedBox(width: 48),
           ],
         ),
       ),
@@ -203,7 +213,6 @@ class _IntroHeader extends StatelessWidget {
   }
 }
 
-// Extracted footer widget
 class _IntroFooter extends StatelessWidget {
   final int currentPage;
   final int totalPages;
@@ -225,15 +234,12 @@ class _IntroFooter extends StatelessWidget {
       padding: const EdgeInsets.all(_kHorizontalPadding),
       child: Column(
         children: [
-          // Page indicator
           _MinimalPageIndicator(
             currentPage: currentPage,
             pageCount: totalPages,
             color: accentColor,
           ),
           const SizedBox(height: 32),
-
-          // Action button
           SizedBox(
             width: double.infinity,
             height: _kButtonHeight,
@@ -262,7 +268,6 @@ class _IntroFooter extends StatelessWidget {
   }
 }
 
-// Page content widget
 class _IntroPageContent extends StatelessWidget {
   final IntroPage page;
 
@@ -277,19 +282,16 @@ class _IntroPageContent extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Illustration
           Container(
             width: _kIllustrationSize,
             height: _kIllustrationSize,
             decoration: BoxDecoration(
-              color: page.color.withOpacity(0.1),
+              color: page.color.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(page.illustration, size: _kIconSize, color: page.color),
           ),
-          const SizedBox(height: 40),
-
-          // Title
+          const SizedBox(height: 48),
           Text(
             page.title,
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -300,8 +302,6 @@ class _IntroPageContent extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-
-          // Subtitle
           Text(
             page.subtitle,
             style: theme.textTheme.bodyLarge?.copyWith(
@@ -311,13 +311,47 @@ class _IntroPageContent extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 32),
+          if (page.highlights.isNotEmpty)
+            IntrinsicWidth(
+              child: Column(
+                children: page.highlights.map((highlight) {
+                  final bool isExample =
+                      highlight.contains('Coffee') ||
+                      highlight.contains('%') ||
+                      highlight.contains(':');
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 20,
+                          color: page.color.withValues(alpha:0.8),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          highlight,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontFamily: isExample ? 'monospace' : null,
+                            fontWeight: isExample ? FontWeight.w500 : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-// Page indicator widget
 class _MinimalPageIndicator extends StatelessWidget {
   final int currentPage;
   final int pageCount;
@@ -341,7 +375,7 @@ class _MinimalPageIndicator extends StatelessWidget {
           height: 6,
           margin: const EdgeInsets.symmetric(horizontal: 3),
           decoration: BoxDecoration(
-            color: isActive ? color : color.withOpacity(0.25),
+            color: isActive ? color : color.withValues(alpha:0.25),
             borderRadius: BorderRadius.circular(3),
           ),
         );
@@ -350,16 +384,17 @@ class _MinimalPageIndicator extends StatelessWidget {
   }
 }
 
-// Data model for intro pages
 class IntroPage {
   final String title;
   final String subtitle;
+  final List<String> highlights;
   final IconData illustration;
   final Color color;
 
   IntroPage({
     required this.title,
     required this.subtitle,
+    required this.highlights,
     required this.illustration,
     required this.color,
   });

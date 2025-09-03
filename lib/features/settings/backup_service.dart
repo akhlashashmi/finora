@@ -12,7 +12,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'backup_service.g.dart';
 
-// --- SERVICE CLASS (UPDATED FOR FIRESTORE) ---
 class BackupService {
   final ExpenseRepository _repo;
   final FirebaseAuth _auth;
@@ -21,16 +20,13 @@ class BackupService {
 
   BackupService(this._repo, this._auth, this._googleSignIn, this._firestore);
 
-  // --- Google Sign-In (Corrected based on your example) ---
   Future<User?> signInWithGoogle() async {
-    // This pattern is from your working auth_repository.dart
     final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return null; // User cancelled the sign-in
+    if (googleUser == null) return null;
 
     final GoogleSignInAuthentication googleAuth =
         await googleUser.authentication;
     final OAuthCredential credential = GoogleAuthProvider.credential(
-      // Correctly passing accessToken and idToken
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
@@ -48,12 +44,10 @@ class BackupService {
     return _repo.createBackup();
   }
 
-  // --- Restore Logic (Now calls the new merge method in the repository) ---
   Future<void> restoreFromBackupModel(BackupModel backup) async {
     await _repo.restoreAndMergeFromBackup(backup);
   }
 
-  // --- Upload Logic (UPDATED FOR FIRESTORE) ---
   // Add conflict resolution to uploadBackup
   Future<void> uploadBackup(BackupModel backup) async {
     final user = _auth.currentUser;
@@ -75,7 +69,7 @@ class BackupService {
     await docRef.set(dataToUpload);
   }
 
-// Add merge method
+  // Add merge method
   BackupModel _mergeBackups(BackupModel existing, BackupModel newBackup) {
     final mergedLists = <ListPageModel>[];
 
@@ -98,10 +92,12 @@ class BackupService {
 
         // Use the newer list data
         final isNewer = newList.updatedAt.isAfter(existingList.updatedAt);
-        mergedLists.add(newList.copyWith(
-          checks: mergedChecks,
-          updatedAt: isNewer ? newList.updatedAt : existingList.updatedAt,
-        ));
+        mergedLists.add(
+          newList.copyWith(
+            checks: mergedChecks,
+            updatedAt: isNewer ? newList.updatedAt : existingList.updatedAt,
+          ),
+        );
       } else {
         mergedLists.add(newList);
       }
@@ -121,7 +117,7 @@ class BackupService {
     );
   }
 
-  // --- Download Logic (UPDATED FOR FIRESTORE) ---
+  // Download Logic (UPDATED FOR FIRESTORE)
   Future<BackupModel?> downloadBackup() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("Not signed in");
@@ -135,7 +131,7 @@ class BackupService {
     return BackupModel.fromJson(snapshot.data()!);
   }
 
-  // --- Timestamp Logic (UPDATED FOR FIRESTORE) ---
+  // Timestamp Logic (UPDATED FOR FIRESTORE)
   Future<DateTime?> getLatestBackupTimestamp() async {
     final user = _auth.currentUser;
     if (user == null) return null;
@@ -153,7 +149,7 @@ class BackupService {
   }
 }
 
-// --- STATE MODEL (Remains the same) ---
+// STATE MODEL (Remains the same)
 class BackupState {
   final User? user;
   final bool isLoading;
@@ -184,7 +180,7 @@ class BackupState {
   }
 }
 
-// --- STATE NOTIFIER (MODERNIZED) ---
+// STATE NOTIFIER (MODERNIZED)
 @riverpod
 class BackupStateNotifier extends _$BackupStateNotifier {
   @override
@@ -271,7 +267,7 @@ class BackupStateNotifier extends _$BackupStateNotifier {
   }
 }
 
-// --- PROVIDERS (MODERNIZED FOR FIRESTORE) ---
+// PROVIDERS (MODERNIZED FOR FIRESTORE)
 @Riverpod(keepAlive: true)
 FirebaseAuth firebaseAuth(Ref ref) => FirebaseAuth.instance;
 

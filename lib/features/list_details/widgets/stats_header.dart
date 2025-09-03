@@ -1,5 +1,4 @@
-import 'dart:ui'; // Added for ImageFilter
-
+import 'dart:ui';
 import 'package:finora/data/local/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -17,11 +16,11 @@ class StatsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+    final currencyFormat = NumberFormat.currency(symbol: '', decimalDigits: 2);
     final compactCurrencyFormat =
-    NumberFormat.compactCurrency(symbol: '\$', decimalDigits: 2);
+    NumberFormat.compactCurrency(symbol: '', decimalDigits: 2);
 
-    // --- CALCULATIONS ---
+    // CALCULATIONS
     final totalItems = checks.length;
     final selectedCount = checks.where((c) => c.isSelected).length;
     final totalAmount = checks.fold<double>(0.0, (sum, c) => sum + c.number);
@@ -42,17 +41,15 @@ class StatsHeader extends StatelessWidget {
     final numberFormat =
     useCompactFormat ? compactCurrencyFormat : currencyFormat;
 
-    // The root widget is now a ClipRRect to contain the BackdropFilter
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
         child: Container(
-          // Margin is removed, padding is used inside to keep content aligned
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.5), // Slightly more opaque for better legibility
+            color: theme.colorScheme.surfaceVariant.withValues(alpha:0.5),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+            border: Border.all(color: theme.colorScheme.outline.withValues(alpha:0.2)),
           ),
           child: _buildExpandedView(
             context,
@@ -90,7 +87,7 @@ class StatsHeader extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // --- Primary Statistics Row ---
+          // Primary Statistics Row
           Padding(
             // Reduced vertical padding to prevent overflow
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -133,11 +130,11 @@ class StatsHeader extends StatelessWidget {
             ),
           ),
 
-          // --- Budget Row ---
+          // Budget Row
           if (hasBudget) ...[
             Container(
               height: 1,
-              color: theme.colorScheme.outline.withOpacity(0.1),
+              color: theme.colorScheme.outline.withValues(alpha:0.1),
               margin: const EdgeInsets.symmetric(horizontal: 4),
             ),
             Padding(
@@ -213,8 +210,8 @@ class _VerticalDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 1,
-      height: 40, // Kept height the same as it's a fixed divider
-      color: theme.colorScheme.outline.withOpacity(0.2),
+      height: 40,
+      color: theme.colorScheme.outline.withValues(alpha:0.2),
     );
   }
 }
@@ -248,7 +245,7 @@ class _StatTile extends StatelessWidget {
         Icon(
           icon,
           size: 20,
-          color: valueColor ?? theme.colorScheme.onSurface.withOpacity(0.7),
+          color: valueColor ?? theme.colorScheme.onSurface.withValues(alpha:0.7),
         ),
         // Reduced vertical spacing
         const SizedBox(height: 2),
@@ -288,7 +285,7 @@ class _StatTile extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha:0.6),
           ),
           textAlign: TextAlign.center,
           maxLines: 1,

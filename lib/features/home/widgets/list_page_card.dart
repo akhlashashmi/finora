@@ -1,13 +1,7 @@
 import 'package:finora/data/local/app_database.dart';
 import 'package:finora/data/repository/expense_repository.dart';
-import 'package:finora/features/home/widgets/edit_list_bottom_sheet.dart';
-import 'package:finora/routing/app_router.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 final listStatsProvider = StreamProvider.autoDispose
     .family<List<Check>, String>((ref, listId) {
@@ -15,422 +9,115 @@ final listStatsProvider = StreamProvider.autoDispose
       return repo.watchChecksForList(listId);
     });
 
-class ListPageCard extends ConsumerWidget {
+class ListPageCard extends ConsumerStatefulWidget {
   final ListPage listPage;
-  const ListPageCard({super.key, required this.listPage});
+  final bool isDragging;
+  final bool isSelected;
+  final bool isReorderMode;
+  final int index;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  const ListPageCard({
+    super.key,
+    required this.listPage,
+    required this.index,
+    this.isDragging = false,
+    this.isSelected = false,
+    this.isReorderMode = false,
+    this.onTap,
+    this.onLongPress,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(listStatsProvider(listPage.id));
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
-    final compactCurrencyFormat = NumberFormat.compactCurrency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+  ConsumerState<ListPageCard> createState() => _ListPageCardState();
+}
+
+class _ListPageCardState extends ConsumerState<ListPageCard> {
+  @override
+  Widget build(BuildContext context) {
+    final stats = ref.watch(listStatsProvider(widget.listPage.id));
     final theme = Theme.of(context);
 
-    void deleteList() {
-      HapticFeedback.mediumImpact();
-      ref.read(expenseRepositoryProvider).deleteListPage(listPage.id);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${listPage.name} deleted')));
-    }
+    final color = widget.isSelected
+        ? theme.colorScheme.primaryContainer.withValues(alpha:0.4)
+        : theme
+              .colorScheme
+              .surfaceContainerHigh;
 
-    void editList() {
-      HapticFeedback.lightImpact();
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (_) => EditListBottomSheet(listPage: listPage),
-      );
-    }
+    final elevation = widget.isSelected ? 4.0 : 1.0;
+    final scale = widget.isSelected ? 1.03 : 1.0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8), // Reduced from 12
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12), // Reduced from 16
-        child: Slidable(
-          key: ValueKey(listPage.id),
-          endActionPane: ActionPane(
-            motion: const BehindMotion(),
-            extentRatio: 0.35, // Reduced from 0.4
-            dragDismissible: false,
-            children: [
-              SizedBox(width: 8),
-              // Edit Action
-              Expanded(
-                flex: 1,
-                child: Container(
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        theme.colorScheme.primary.withOpacity(0.1),
-                        theme.colorScheme.primary.withOpacity(0.15),
-                      ],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      bottomLeft: Radius.circular(12),
-                    ),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: editList,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 36, // Reduced from 44
-                            height: 36, // Reduced from 44
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              borderRadius: BorderRadius.circular(
-                                10,
-                              ), // Reduced from 12
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.colorScheme.primary.withOpacity(
-                                    0.3,
-                                  ),
-                                  blurRadius: 6, // Reduced from 8
-                                  offset: const Offset(
-                                    0,
-                                    1,
-                                  ), // Reduced from (0, 2)
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.edit_outlined,
-                              color: theme.colorScheme.onPrimary,
-                              size: 18, // Reduced from 20
-                            ),
-                          ),
-                          const SizedBox(height: 4), // Reduced from 8
-                          Text(
-                            'Edit',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                              fontSize: 10, // Added smaller font
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // Delete Action
-              Expanded(
-                flex: 1,
-                child: Container(
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        theme.colorScheme.error.withOpacity(0.1),
-                        theme.colorScheme.error.withOpacity(0.15),
-                      ],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: deleteList,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 36, // Reduced from 44
-                            height: 36, // Reduced from 44
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.error,
-                              borderRadius: BorderRadius.circular(
-                                10,
-                              ), // Reduced from 12
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.colorScheme.error.withOpacity(
-                                    0.3,
-                                  ),
-                                  blurRadius: 6, // Reduced from 8
-                                  offset: const Offset(
-                                    0,
-                                    1,
-                                  ), // Reduced from (0, 2)
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.delete_outline,
-                              color: theme.colorScheme.onError,
-                              size: 18, // Reduced from 20
-                            ),
-                          ),
-                          const SizedBox(height: 4), // Reduced from 8
-                          Text(
-                            'Delete',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.error,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                              fontSize: 10, // Added smaller font
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          child: Card(
-            clipBehavior: Clip.antiAlias,
-            elevation: 0,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12), // Reduced from 16
-              side: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.2),
-                width: 1.0,
-              ),
+    return AnimatedScale(
+      scale: scale,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.shadow.withValues(alpha:0.05),
+              blurRadius: 10,
+              offset: Offset(0, elevation),
             ),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                context.pushNamed(
-                  AppRoute.listDetails.name,
-                  pathParameters: {'listId': listPage.id},
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(12.0), // Reduced from 16
-                child: Container(
-                  height: 80, // Fixed height for all cards
-                  child: stats.when(
-                    data: (checks) {
-                      final total = checks.fold<double>(
-                        0,
-                        (sum, item) => sum + item.number,
-                      );
-                      final checked = checks
-                          .where((c) => c.isSelected)
-                          .fold<double>(0, (sum, item) => sum + item.number);
-                      final checkedCount = checks
-                          .where((c) => c.isSelected)
-                          .length;
-                      final hasBudget = listPage.budget > 0;
-                      final isOverBudget = hasBudget && total > listPage.budget;
-                      final useCompactFormat =
-                          total > 999999 ||
-                          (hasBudget && listPage.budget > 999999);
-                      final numberFormat = useCompactFormat
-                          ? compactCurrencyFormat
-                          : currencyFormat;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Header row with name and key stats
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      listPage.name,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '$checkedCount/${checks.length} selected',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: theme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Total value prominently displayed
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    numberFormat.format(total),
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                  ),
-                                  // Always reserve space for budget info to maintain consistent height
-                                  SizedBox(
-                                    height: 16,
-                                    child: hasBudget
-                                        ? Text(
-                                            'of ${numberFormat.format(listPage.budget)}',
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                                  color: theme
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                          )
-                                        : null,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-
-                          // Fixed height bottom section for status
-                          SizedBox(
-                            height: 18,
-                            child: Row(
-                              children: [
-                                if (isOverBudget)
-                                  _CompactChip(
-                                    icon: Icons.warning_amber,
-                                    label: 'Over Budget',
-                                    color: theme.colorScheme.error,
-                                  )
-                                else if (checks.length > 10)
-                                  _CompactChip(
-                                    icon: Icons.list_alt,
-                                    label: '${checks.length} items',
-                                    color: theme.colorScheme.primary,
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                    loading: () => Container(
-                      height: 80, // Same fixed height
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      listPage.name,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Loading...',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: theme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Fixed height bottom section
-                          const SizedBox(height: 18),
-                        ],
-                      ),
-                    ),
-                    error: (_, __) => Container(
-                      height: 80, // Same fixed height
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      listPage.name,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Error loading data',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: theme.colorScheme.error,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.error_outline,
-                                size: 16,
-                                color: theme.colorScheme.error,
-                              ),
-                            ],
-                          ),
-                          // Fixed height bottom section for status
-                          const SizedBox(height: 18),
-                        ],
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            onLongPress: widget.onLongPress,
+            borderRadius: BorderRadius.circular(16),
+            splashColor: theme.colorScheme.primary.withValues(alpha:0.1),
+            highlightColor: theme.colorScheme.primary.withValues(alpha:0.05),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      child: stats.when(
+                        data: (checks) => _buildCardContent(
+                          context,
+                          theme,
+                          checks,
+                          key: const ValueKey('data'),
+                        ),
+                        loading: () => _buildLoadingContent(
+                          context,
+                          theme,
+                          key: const ValueKey('loading'),
+                        ),
+                        error: (_, __) => _buildErrorContent(
+                          context,
+                          theme,
+                          key: const ValueKey('error'),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  if (widget.isReorderMode)
+                    ReorderableDragStartListener(
+                      index: widget.index,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 12),
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.drag_handle_rounded,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -438,42 +125,273 @@ class ListPageCard extends ConsumerWidget {
       ),
     );
   }
-}
 
-class _CompactChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
+  Widget _buildCardContent(
+    BuildContext context,
+    ThemeData theme,
+    List<Check> checks, {
+    Key? key,
+  }) {
+    return _buildHeader(context, theme, checks, key: key);
+  }
 
-  const _CompactChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
+  Widget _buildHeader(
+    BuildContext context,
+    ThemeData theme,
+    List<Check> checks, {
+    Key? key,
+  }) {
+    final checkedCount = checks.where((c) => c.isSelected).length;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w600,
+    return Row(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // A prominent leading icon, similar to settings screen.
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha:0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.article_outlined,
+                color: theme.colorScheme.primary,
+                size: 22,
+              ),
             ),
+            if (widget.listPage.isPinned)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.surfaceContainerLow,
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.push_pin_rounded,
+                    size: 12,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.listPage.name,
+                style: TextStyle(
+                  fontSize: 17, // Modified
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              // Item info is now a subtitle here, not in a separate footer.
+              _buildItemsInfo(context, theme, checks, checkedCount),
+            ],
           ),
+        ),
+        if (!widget.isReorderMode) ...[
+          const SizedBox(width: 12),
+          _buildStatusChip(context, theme, checks),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStatusChip(
+    BuildContext context,
+    ThemeData theme,
+    List<Check> checks,
+  ) {
+    final isProtected = widget.listPage.isProtected;
+    final checkedCount = checks.where((c) => c.isSelected).length;
+    final total = checks.fold<double>(0, (sum, item) => sum + item.number);
+    final hasBudget = widget.listPage.budget > 0;
+    final isOverBudget = hasBudget && total > widget.listPage.budget;
+
+    Color? backgroundColor;
+    Color? textColor;
+    IconData? iconData;
+    String? label;
+
+    if (isProtected) {
+      backgroundColor = theme.colorScheme.secondaryContainer;
+      textColor = theme.colorScheme.onSecondaryContainer;
+      iconData = Icons.security_rounded;
+    } else if (isOverBudget) {
+      backgroundColor = theme.colorScheme.errorContainer;
+      textColor = theme.colorScheme.onErrorContainer;
+      iconData = Icons.warning_amber_rounded;
+    } else if (checkedCount == checks.length && checks.isNotEmpty) {
+      backgroundColor = theme.colorScheme.tertiaryContainer;
+      textColor = theme.colorScheme.onTertiaryContainer;
+      iconData = Icons.check_circle_outline;
+    }
+
+    if (iconData == null) {
+      return const SizedBox.shrink();
+    }
+
+    // This is now an icon-only chip for a cleaner look. A tooltip can be added.
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Icon(iconData, size: 16, color: textColor),
+    );
+  }
+
+  // This widget now builds the subtitle-style text.
+  Widget _buildItemsInfo(
+    BuildContext context,
+    ThemeData theme,
+    List<Check> checks,
+    int checkedCount,
+  ) {
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(
+          fontSize: 13,
+          color: theme.colorScheme.onSurfaceVariant,
+          fontFamily: Theme.of(context).textTheme.bodySmall?.fontFamily,
+        ),
+        children: [
+          TextSpan(
+            text: checks.length > 1
+                ? '${checks.length} items'
+                : '${checks.length} item',
+          ),
+          if (checkedCount > 0) ...[
+            const TextSpan(text: '  •  '),
+            TextSpan(
+              text: '$checkedCount checked',
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  // Updated loading content to match new layout.
+  Widget _buildLoadingContent(
+    BuildContext context,
+    ThemeData theme, {
+    Key? key,
+  }) {
+    return Row(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.onSurface.withValues(alpha:0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.listPage.name,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: 120,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha:0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Updated error content to match new layout.
+  Widget _buildErrorContent(BuildContext context, ThemeData theme, {Key? key}) {
+    return Row(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.error.withValues(alpha:0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.error_outline_rounded,
+            color: theme.colorScheme.error,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.listPage.name,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Failed to load data',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
